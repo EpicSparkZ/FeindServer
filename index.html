@@ -1,2 +1,124 @@
 <!DOCTYPE html>
-<h1>Main page under construction</h1>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Homepage</title>
+  <link rel="icon" href="webicon.png" type="image/png">
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #1e1e1e;
+      color: white;
+      overflow-x: hidden;
+    }
+
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: -250px;
+      width: 250px;
+      height: 100%;
+      background-color: #2a2a2a;
+      padding-top: 60px;
+      transition: left 0.3s ease;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.5);
+    }
+
+    .sidebar.open {
+      left: 0;
+    }
+
+    .sidebar a {
+      display: block;
+      color: #ccc;
+      padding: 12px 20px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .sidebar a:hover {
+      background-color: #444;
+      color: #fff;
+    }
+
+    .sidebar-separator {
+      padding: 8px 20px;
+      font-weight: 600;
+      color: #bbb;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 1.5px;
+      border-top: 1px solid #444;
+      border-bottom: 1px solid #444;
+      margin: 20px 0;
+      user-select: none;
+    }
+
+    .hamburger {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      width: 30px;
+      height: 24px;
+      cursor: pointer;
+      z-index: 1001;
+    }
+
+    .hamburger div {
+      width: 100%;
+      height: 4px;
+      background-color: white;
+      margin: 4px 0;
+      transition: all 0.3s ease;
+    }
+
+    .main-content {
+      margin-left: 0;
+      padding: 40px;
+      transition: margin-left 0.3s ease;
+    }
+
+    .sidebar.open ~ .main-content {
+      margin-left: 250px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hamburger Button -->
+  <div class="hamburger" onclick="toggleSidebar()">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <!-- Sidebar links will load here -->
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <h1>UNDER CONSTRUCTION</h1>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("open");
+    }
+
+    // Load sidebar links from sidebar.html
+    fetch('sidebar.html')
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('sidebar').innerHTML = data;
+      })
+      .catch(error => {
+        console.error("Failed to load sidebar:", error);
+      });
+  </script>
+
+</body>
+</html>
