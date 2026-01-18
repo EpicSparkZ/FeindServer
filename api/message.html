@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feind Server</title>
+  <link rel="icon" href="/webicon.png" type="image/png">
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background-color: #1e1e1e; color: white; overflow-x: hidden; }
+    .sidebar { position: fixed; top: 0; left: -250px; width: 250px; height: 100%; background-color: #2a2a2a; padding-top: 60px; transition: left 0.3s ease; box-shadow: 2px 0 5px rgba(0,0,0,0.5); z-index: 1000; }
+    .sidebar.open { left: 0; }
+    .sidebar a { display: block; color: #ccc; padding: 12px 20px; text-decoration: none; transition: background 0.2s; }
+    .sidebar a:hover { background-color: #444; color: #fff; }
+    .sidebar-separator { padding: 8px 20px; font-weight: 600; color: #bbb; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1.5px; border-top: 1px solid #444; border-bottom: 1px solid #444; margin: 20px 0; user-select: none; }
+    .hamburger { position: fixed; top: 20px; left: 20px; width: 30px; height: 24px; cursor: pointer; z-index: 1001; }
+    .hamburger div { width: 100%; height: 4px; background-color: white; margin: 4px 0; transition: all 0.3s ease; }
+    .main-content { margin-left: 0; padding: 40px; transition: margin-left 0.3s ease; max-width: 800px; box-sizing: border-box; }
+    .sidebar.open ~ .main-content { margin-left: 250px; }
+    h1 { font-size: 2rem; margin-bottom: 20px; }
+    p { line-height: 1.6; margin-bottom: 20px; }
+    textarea, select { width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 20px; background-color: #2a2a2a; color: white; border: 1px solid #444; font-family: inherit; font-size: 1rem; }
+    button { padding: 10px 20px; background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
+    .selected-users { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
+    .selected-user span { cursor: pointer; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="hamburger" onclick="toggleSidebar()"><div></div><div></div><div></div></div>
+<div class="sidebar" id="sidebar">Loading...</div>
+
+<div class="main-content">
+  <h1>Feind Server API</h1>
+  <p>API Status: 🟢</p>
+
+  <form id="noteForm">
+    <label>
+      <strong>Message</strong><br>
+      <textarea id="note" rows="5" placeholder="Type your message here..."></textarea>
+    </label>
+
+    <label>
+      <strong>Ping Users</strong><br>
+      <select id="pingUser">
+        <option value="">Select user...</option>
+      </select>
+    </label>
+
+    <div class="selected-users" id="selectedUsersContainer"></div>
+
+    <button type="submit">Send</button>
+  </form>
+</div>
+
+<!-- Firebase App (core) -->
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
+
+<script>
+  // --- FIREBASE CONFIG ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyA2HyO5wSmAZPBjfFrShcS2EF1G9uFT9nk",
+    authDomain: "feindserver-ee38e.firebaseapp.com",
+    databaseURL: "https://feindserver-ee38e-default-rtdb.firebaseio.com",
+    projectId: "feindserver-ee38e",
+    storageBucket: "feindserver-ee38e.appspot.com",
+    messagingSenderId: "612147980631",
+    appId: "1:612147980631:web:699fec3b5ffa01d0ebb612"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
+
+  fetch('../sidebar.html')
+    .then(res => res.ok ? res.text() : Promise.reject('404'))
+    .then(html => document.getElementById('sidebar').innerHTML = html)
+    .catch(err => { console.error('Sidebar load failed:', err); document.getElementById('sidebar').innerHTML = 'Failed to load menu.'; });
+
+  const note = document.getElementById('note');
+  const pingUser = document.getElementById('pingUser');
+  const selectedUsersContainer = document.getElementById('selectedUsersContainer');
+  const form = document.getElementById('noteForm');
+  let selectedUsers = [];
+  let isSending = false; // LOCK FLAG
+
+  // Users you can ping
+  const userMap = {
+    "EpicSparkZ": "941482778116120616",
+    "Raptor": "830376717226475531",
+    "Rutap": "781965040223780874",
+    "Tonk": "667179181565542404",
+    "zGray": "956638625116868662",
+    "EggsAreGreat": "1148606556980650106",
+    "Hogurts": "989062707917504512",
+    "dddashy": "905896395645517844",
+    "Flakey": "1462117336072065260",
+    "Veno": "1101554384145485866",
+    "Caketi": "1004042054944440371",
+    "Galaxifard": "1144068676295872653",
+    "FeindFighter": "1157795564457574410",
+    "Predd": "1131758881538846740"
+  };
+
+  // Populate select options alphabetically
+  Object.keys(userMap).sort().forEach(username => {
+    const option = document.createElement('option');
+    option.value = username;
+    option.textContent = username;
+    pingUser.appendChild(option);
+  });
+
+  pingUser.addEventListener('change', () => {
+    const username = pingUser.value;
+    if (username) {
+      selectedUsers.push(username); // allow duplicates
+      renderSelectedUsers();
+    }
+    pingUser.value = "";
+  });
+
+  function renderSelectedUsers() {
+    selectedUsersContainer.innerHTML = "";
+    selectedUsers.forEach((user, i) => {
+      const div = document.createElement('div');
+      div.className = 'selected-user';
+      div.textContent = user;
+      const span = document.createElement('span');
+      span.textContent = '✕';
+      span.onclick = () => { selectedUsers.splice(i, 1); renderSelectedUsers(); };
+      div.appendChild(span);
+      selectedUsersContainer.appendChild(div);
+    });
+  }
+
+  note.addEventListener('input', function() {
+    const lines = this.value.split('\n');
+    if (lines.length > 15) this.value = lines.slice(0, 15).join('\n');
+  });
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    if (isSending) return; // prevent multiple submits
+    isSending = true;
+
+    const submitButton = form.querySelector('button');
+    submitButton.disabled = true;
+    note.disabled = true;
+    pingUser.disabled = true;
+
+    try {
+      const webhookURL = "https://discord.com/api/webhooks/1462555186886086828/MB0byZPUgcryGywo6vTB25CfnSwiIO58FrbI4ENgAB1aLa6mhsYzyDapr4zX48USZlbs";
+
+      // --- FIREBASE CHECK ---
+      const snapshot = await db.ref("control").get();
+      const control = snapshot.val() || {};
+      const allowMessages = control.allowMessages !== false;
+      const cooldown = control.cooldown || 0;
+
+      const now = Date.now();
+      const lastSent = parseInt(localStorage.getItem('lastSent')) || 0;
+
+      if (!allowMessages) { alert("Sending is currently disabled."); return; }
+      if (now - lastSent < cooldown) { 
+        alert(`Please wait ${Math.ceil((cooldown - (now - lastSent))/1000)} seconds before sending again.`); 
+        return; 
+      }
+
+      const pingText = selectedUsers.map(u => `<@${userMap[u]}>`).join(" ");
+      const messageContent = (note.value.trim() ? note.value.trim() + (pingText ? " " : "") : "") + pingText;
+
+      if (!messageContent) { alert("Please enter a message or select a user to ping."); return; }
+
+      const res = await fetch(webhookURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: messageContent })
+      });
+
+      if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
+
+      alert("Message Sent Successfully!");
+      form.reset();
+      selectedUsers = [];
+      renderSelectedUsers();
+      localStorage.setItem('lastSent', now);
+
+    } catch(err) {
+      console.error(err);
+      alert("Failed to send message. Check console for details.");
+    } finally {
+      isSending = false;
+      submitButton.disabled = false;
+      note.disabled = false;
+      pingUser.disabled = false;
+    }
+  });
+</script>
+
+</body>
+</html>
