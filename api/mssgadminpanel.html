@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Control Page</title>
+</head>
+<body>
+<h2>Control Discord Messages</h2>
+
+<label>
+  <input type="checkbox" id="allowSwitch"> Allow Sending
+</label>
+<br>
+<label>
+  Cooldown (seconds): <input type="number" id="cooldownInput" value="0" min="0">
+</label>
+<br>
+<button onclick="saveSettings()">Save</button>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
+
+<script>
+  // --- FIREBASE CONFIG ---
+  const firebaseConfig = {
+    apiKey: "AIzaSyA2HyO5wSmAZPBjfFrShcS2EF1G9uFT9nk",
+    authDomain: "feindserver-ee38e.firebaseapp.com",
+    databaseURL: "https://feindserver-ee38e-default-rtdb.firebaseio.com",
+    projectId: "feindserver-ee38e",
+    storageBucket: "feindserver-ee38e.appspot.com",
+    messagingSenderId: "612147980631",
+    appId: "1:612147980631:web:699fec3b5ffa01d0ebb612"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function saveSettings() {
+    const allow = document.getElementById('allowSwitch').checked;
+    const cooldown = parseInt(document.getElementById('cooldownInput').value) || 0;
+    // Save to Firebase in the structure your message page expects
+    db.ref('control').set({
+      allowMessages: allow,
+      cooldown: cooldown * 1000 // convert to milliseconds
+    });
+    alert('Settings saved!');
+  }
+
+  // Load current settings from Firebase
+  db.ref('control').on('value', snapshot => {
+    const data = snapshot.val();
+    if (!data) return;
+    document.getElementById('allowSwitch').checked = data.allowMessages !== false; // default true
+    document.getElementById('cooldownInput').value = Math.floor((data.cooldown || 0) / 1000);
+  });
+</script>
+</body>
+</html>
