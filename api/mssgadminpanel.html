@@ -7,8 +7,9 @@
   <style>
     body { margin: 0; font-family: Arial, sans-serif; background-color: #1e1e1e; color: white; padding: 40px; }
     label { display: block; margin-bottom: 15px; }
-    input, button { padding: 8px; font-size: 1rem; margin-top: 5px; }
-    button { background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
+    input, button, textarea { padding: 8px; font-size: 1rem; margin-top: 5px; width: 100%; box-sizing: border-box; }
+    button { background-color: #444; color: white; border: 1px solid #666; cursor: pointer; width: auto; }
+    textarea { height: 80px; background-color: #2a2a2a; color: white; border: 1px solid #444; font-family: inherit; }
   </style>
 </head>
 <body>
@@ -20,6 +21,11 @@
 
 <label>
   Cooldown (seconds): <input type="number" id="cooldownInput" value="0" min="0">
+</label>
+
+<label>
+  Optional Note:
+  <textarea id="noteInput" placeholder="Add a note to include in the Discord message..."></textarea>
 </label>
 
 <button id="saveBtn">Save</button>
@@ -43,6 +49,7 @@
 
   const allowSwitch = document.getElementById('allowSwitch');
   const cooldownInput = document.getElementById('cooldownInput');
+  const noteInput = document.getElementById('noteInput');
   const saveBtn = document.getElementById('saveBtn');
 
   let previousSettings = {};
@@ -65,6 +72,7 @@
 
     const allow = allowSwitch.checked;
     const cooldown = parseInt(cooldownInput.value) || 0;
+    const note = noteInput.value.trim();
 
     // Check for changes and include old values
     const changes = [];
@@ -76,16 +84,17 @@
     }
 
     try {
-      // Save to Firebase first
+      // Save to Firebase
       await db.ref('control').set({
         allowMessages: allow,
         cooldown: cooldown * 1000
       });
 
-      // Send Discord message if there are changes
-      if (changes.length > 0) {
+      // Send Discord message if there are changes or a note
+      if (changes.length > 0 || note) {
         const webhookURL = "https://discord.com/api/webhooks/1462611630683853002/bq3KbE-StqlChYFWhDgoSee9FJYp7taH64GzjCpjmwgz9zDvhNnzdn51kyd6LrySnKal";
-        const message = "Settings Updated:\n" + changes.join("\n");
+        let message = "Settings Updated:\n" + changes.join("\n");
+        if (note) message += "\n\nNote: " + note;
 
         const res = await fetch(webhookURL, {
           method: "POST",
@@ -98,6 +107,7 @@
       }
 
       alert('Settings saved!');
+      noteInput.value = ""; // Clear note after sending
     } catch (err) {
       console.error("Failed to save or send message:", err);
       alert("Error saving settings or sending Discord message. Check console.");
