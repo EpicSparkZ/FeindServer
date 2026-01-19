@@ -161,6 +161,9 @@
     } else {
       adminNoteBox.style.display = "none";
     }
+
+    // ADDED: Populate the note textarea with the admin note
+    note.value = data.note || "";
   });
 
   form.addEventListener('submit', async (e) => {
