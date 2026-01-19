@@ -15,7 +15,7 @@
     .selected-users { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
     .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
     .selected-user span { cursor: pointer; font-weight: bold; }
-    #adminNoteBox { display: none; background-color: #333; padding: 15px; margin-bottom: 20px; border: 1px solid #555; border-radius: 4px; }
+    #adminNoteBox { background: #333; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
   </style>
 </head>
 <body>
@@ -24,7 +24,11 @@
   <h1>Feind Server Messages</h1>
   <p>API Status: 🟢</p>
 
-  <div id="adminNoteBox"><strong>Note from Admin:</strong> <span id="adminNoteText"></span></div>
+  <!-- Admin Note Box -->
+  <div id="adminNoteBox" style="display:none;">
+    <p><strong>Messages are currently disabled by an administrator.</strong></p>
+    <p><strong>Provided Note:</strong> <span id="adminNoteText"></span></p>
+  </div>
 
   <form id="noteForm">
     <label>
@@ -40,7 +44,7 @@
 
     <div class="selected-users" id="selectedUsersContainer"></div>
 
-    <button type="submit" id="sendBtn">Send</button>
+    <button type="submit">Send</button>
   </form>
 </div>
 
@@ -66,7 +70,6 @@
   const datalist = document.getElementById('userList');
   const selectedUsersContainer = document.getElementById('selectedUsersContainer');
   const form = document.getElementById('noteForm');
-  const sendBtn = document.getElementById('sendBtn');
   const adminNoteBox = document.getElementById('adminNoteBox');
   const adminNoteText = document.getElementById('adminNoteText');
 
@@ -92,7 +95,6 @@
     "Vookey": "939296693562781877"
   };
 
-  // Populate datalist
   Object.keys(userMap).sort().forEach(u => {
     const opt = document.createElement('option');
     opt.value = u;
@@ -103,6 +105,7 @@
     const username = pingInput.value.trim();
     if (!userMap[username]) { pingInput.value = ""; return; }
     if (selectedUsers.length >= 5) { alert("You can ping a maximum of 5 users."); pingInput.value = ""; return; }
+
     selectedUsers.push(username);
     renderSelectedUsers();
     pingInput.value = "";
@@ -116,7 +119,7 @@
       div.textContent = user;
       const span = document.createElement('span');
       span.textContent = '✕';
-      span.onclick = () => { selectedUsers.splice(i, 1); renderSelectedUsers(); };
+      span.onclick = () => { selectedUsers.splice(i,1); renderSelectedUsers(); };
       div.appendChild(span);
       selectedUsersContainer.appendChild(div);
     });
@@ -124,20 +127,20 @@
 
   note.addEventListener('input', function() {
     const lines = this.value.split('\n');
-    if (lines.length > 15) this.value = lines.slice(0, 15).join('\n');
+    if (lines.length > 15) this.value = lines.slice(0,15).join('\n');
   });
 
-  // LIVE CONTROL + ADMIN NOTE DISPLAY
+  // Listen for admin control changes
   db.ref("control").on("value", snap => {
     const data = snap.val() || {};
     const allow = data.allowMessages !== false;
-    const noteText = (data.note || "").trim(); // show admin note
+    const noteText = (data.note || "").trim() || "N/A";
 
-    sendBtn.disabled = !allow;
+    form.querySelector('button').disabled = !allow;
 
     if (!allow) {
       adminNoteBox.style.display = "block";
-      adminNoteText.textContent = noteText; // only show admin note
+      adminNoteText.textContent = noteText;
     } else {
       adminNoteBox.style.display = "none";
     }
@@ -155,7 +158,7 @@
       const normalCooldown = control.cooldown || 0;
       const pingCooldown = control.pingCooldown || 0;
 
-      if (!allowMessages) { alert("Messages are currently disabled."); return; }
+      if (!allowMessages) { alert("Sending is currently disabled."); return; }
 
       const now = Date.now();
       const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
@@ -163,17 +166,19 @@
       const hasPing = selectedUsers.length > 0;
 
       if (hasPing && now - lastPingTime < pingCooldown) {
-        alert(`Please wait ${Math.ceil((pingCooldown - (now - lastPingTime))/1000)}s before sending another ping.`);
+        alert(`Please wait ${Math.ceil((pingCooldown - (now - lastPingTime))/1000)} seconds before sending another ping.`);
         return;
       }
+
       if (!hasPing && now - lastMessageTime < normalCooldown) {
-        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)}s before sending another message.`);
+        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)} seconds before sending another message.`);
         return;
       }
 
       const pingText = selectedUsers.map(u => `<@${userMap[u]}>`).join(" ");
       const messageContent = (note.value.trim() ? note.value.trim() + (pingText ? " " : "") : "") + pingText;
-      if (!messageContent) { alert("Enter a message or select a user to ping."); return; }
+
+      if (!messageContent) { alert("Please enter a message or select a user to ping."); return; }
 
       const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
       const res = await fetch(webhookURL, {
@@ -181,6 +186,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: messageContent })
       });
+
       if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
 
       alert("Message sent successfully!");
@@ -193,10 +199,8 @@
 
     } catch (err) {
       console.error(err);
-      alert("Failed to send message. Check console.");
-    } finally {
-      isSending = false;
-    }
+      alert("Failed to send message. Message may be too long or break a rule.");
+    } finally { isSending = false; }
   });
 </script>
 
