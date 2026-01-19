@@ -30,7 +30,7 @@
     </label>
 
     <label>
-      <strong>Ping Users (searchable, max 5)</strong><br>
+      <strong>Ping User/s</strong><br>
       <input id="pingUserInput" list="userList" placeholder="Start typing a username...">
       <datalist id="userList"></datalist>
     </label>
@@ -201,7 +201,7 @@
 
     } catch (err) {
       console.error(err);
-      alert("Failed to send message. Check console.");
+      alert("Failed to send message. Message may be too long or break a rule.");
     } finally {
       isSending = false;
     }
