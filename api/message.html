@@ -10,7 +10,7 @@
     .main-content { padding: 40px; max-width: 800px; box-sizing: border-box; }
     h1 { font-size: 2rem; margin-bottom: 20px; }
     p { line-height: 1.6; margin-bottom: 20px; }
-    textarea, select, input { width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 20px; background-color: #2a2a2a; color: white; border: 1px solid #444; font-family: inherit; font-size: 1rem; }
+    textarea, input { width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 20px; background-color: #2a2a2a; color: white; border: 1px solid #444; font-family: inherit; font-size: 1rem; }
     button { padding: 10px 20px; background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
     .selected-users { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
     .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
@@ -30,15 +30,9 @@
     </label>
 
     <label>
-      <strong>Search Users</strong><br>
-      <input id="userSearch" type="text" placeholder="Type to search users...">
-    </label>
-
-    <label>
-      <strong>Ping Users (max 5)</strong><br>
-      <select id="pingUser">
-        <option value="">Select user...</option>
-      </select>
+      <strong>Ping Users (searchable, max 5)</strong><br>
+      <input id="pingUserInput" list="userList" placeholder="Start typing a username...">
+      <datalist id="userList"></datalist>
     </label>
 
     <div class="selected-users" id="selectedUsersContainer"></div>
@@ -65,8 +59,8 @@
   const db = firebase.database();
 
   const note = document.getElementById('note');
-  const pingUser = document.getElementById('pingUser');
-  const userSearch = document.getElementById('userSearch');
+  const pingInput = document.getElementById('pingUserInput');
+  const datalist = document.getElementById('userList');
   const selectedUsersContainer = document.getElementById('selectedUsersContainer');
   const form = document.getElementById('noteForm');
 
@@ -92,39 +86,29 @@
     "Vookey": "939296693562781877"
   };
 
-  function populateUsers(filter = "") {
-    pingUser.innerHTML = '<option value="">Select user...</option>';
-
-    Object.keys(userMap)
-      .sort()
-      .filter(u => u.toLowerCase().includes(filter.toLowerCase()))
-      .forEach(u => {
-        const option = document.createElement('option');
-        option.value = u;
-        option.textContent = u;
-        pingUser.appendChild(option);
-      });
-  }
-
-  populateUsers();
-
-  userSearch.addEventListener('input', () => {
-    populateUsers(userSearch.value);
+  Object.keys(userMap).sort().forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u;
+    datalist.appendChild(opt);
   });
 
-  pingUser.addEventListener('change', () => {
-    const username = pingUser.value;
-    if (!username) return;
+  pingInput.addEventListener('change', () => {
+    const username = pingInput.value.trim();
+
+    if (!userMap[username]) {
+      pingInput.value = "";
+      return;
+    }
 
     if (selectedUsers.length >= 5) {
       alert("You can ping a maximum of 5 users.");
-      pingUser.value = "";
+      pingInput.value = "";
       return;
     }
 
     selectedUsers.push(username);
     renderSelectedUsers();
-    pingUser.value = "";
+    pingInput.value = "";
   });
 
   function renderSelectedUsers() {
@@ -155,11 +139,6 @@
     e.preventDefault();
     if (isSending) return;
     isSending = true;
-
-    const submitButton = form.querySelector('button');
-    submitButton.disabled = true;
-    note.disabled = true;
-    pingUser.disabled = true;
 
     try {
       const snapshot = await db.ref("control").get();
@@ -225,9 +204,6 @@
       alert("Failed to send message. Check console.");
     } finally {
       isSending = false;
-      submitButton.disabled = false;
-      note.disabled = false;
-      pingUser.disabled = false;
     }
   });
 </script>
