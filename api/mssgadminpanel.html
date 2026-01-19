@@ -52,27 +52,21 @@
     const cooldown = parseInt(document.getElementById('cooldownInput').value) || 0;
 
     const changes = [];
-    if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending → **${allow}**`);
-    if (cooldown !== previousSettings.cooldown) changes.push(`Cooldown → **${cooldown} seconds**`);
+    if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending → ${allow}`);
+    if (cooldown !== previousSettings.cooldown) changes.push(`Cooldown → ${cooldown} seconds`);
 
     if (changes.length > 0) {
       const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
-
-      const embed = {
-        title: "Settings Updated",
-        description: changes.join("\n"),
-        color: 0x00ff00, // green
-        timestamp: new Date().toISOString() // ISO string is required
-      };
+      const message = "Settings Updated:\n" + changes.join("\n");
 
       try {
         const res = await fetch(webhookURL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ embeds: [embed] })
+          body: JSON.stringify({ content: message })
         });
         if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
-        console.log("Discord embed sent successfully!");
+        console.log("Discord message sent successfully!");
       } catch(err) {
         console.error("Failed to send Discord message:", err);
       }
