@@ -177,41 +177,5 @@
     });
   </script>
 
-  <script>
-  // Wait until the page fully loads
-  window.addEventListener('DOMContentLoaded', async () => {
-    try {
-      // Make sure Firebase is initialized
-      if (!firebase || !firebase.database) {
-        throw new Error("Firebase not initialized");
-      }
-
-      // Pull the code from Firebase
-      const snapshot = await firebase.database().ref('control/accessCode').get();
-      const correctCode = snapshot.val(); // only uses Firebase value
-
-      // If no code is set, lock the page
-      if (!correctCode) {
-        alert("Access code not set. Page is locked.");
-        document.querySelectorAll('input, button, textarea').forEach(el => el.disabled = true);
-        return;
-      }
-
-      // Prompt user for the code
-      const enteredCode = prompt("Enter access code to use this page:");
-
-      if (enteredCode !== correctCode) {
-        alert("Incorrect code! You cannot use this page.");
-        document.querySelectorAll('input, button, textarea').forEach(el => el.disabled = true);
-      }
-
-    } catch (err) {
-      console.error("Error fetching access code from Firebase:", err);
-      alert("Error fetching access code. Page is locked.");
-      document.querySelectorAll('input, button, textarea').forEach(el => el.disabled = true);
-    }
-  });
-</script>
-
 </body>
 </html>
