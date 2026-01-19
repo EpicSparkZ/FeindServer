@@ -178,26 +178,40 @@
   </script>
 
   <script>
-  // Function to lock the page until correct code is entered
-  function requireAccessCode() {
-    const correctCode = "7841";
+  async function requireAccessCode() {
+    try {
+      // Pull the code from Firebase
+      const snapshot = await db.ref('control/accessCode').get();
+      const correctCode = snapshot.val(); // no fallback
 
-    let enteredCode = prompt("Enter access code to use this page:");
+      // If no code is set in Firebase, lock the page
+      if (!correctCode) {
+        alert("Access code not set. Page is locked.");
+        document.querySelectorAll('input, button, textarea').forEach(el => {
+          el.disabled = true;
+        });
+        return;
+      }
 
-    if (enteredCode !== correctCode) {
-      alert("Incorrect code! You cannot use this page.");
-      
-      // Disable all inputs and the save button
+      // Ask user for the code
+      let enteredCode = prompt("Enter access code to use this page:");
+
+      if (enteredCode !== correctCode) {
+        alert("Incorrect code! You cannot use this page.");
+        document.querySelectorAll('input, button, textarea').forEach(el => {
+          el.disabled = true;
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching access code from Firebase:", err);
+      alert("Error fetching access code. Page is locked.");
       document.querySelectorAll('input, button, textarea').forEach(el => {
         el.disabled = true;
       });
-
-      // Optionally, you can also hide the container
-      // document.querySelector('.container').style.display = 'none';
     }
   }
 
-  // Call the function on page load
+  // Call the function after Firebase is initialized
   requireAccessCode();
 </script>
 
