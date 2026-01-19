@@ -10,54 +10,12 @@
     .main-content { padding: 40px; max-width: 800px; box-sizing: border-box; }
     h1 { font-size: 2rem; margin-bottom: 20px; }
     p { line-height: 1.6; margin-bottom: 20px; }
-    textarea, input {
-      width: 100%;
-      padding: 8px;
-      margin-top: 6px;
-      margin-bottom: 20px;
-      background-color: #2a2a2a;
-      color: white;
-      border: 1px solid #444;
-      font-family: inherit;
-      font-size: 1rem;
-    }
-    button {
-      padding: 10px 20px;
-      background-color: #444;
-      color: white;
-      border: 1px solid #666;
-      cursor: pointer;
-    }
-    button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .selected-users {
-      margin-bottom: 20px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-    .selected-user {
-      background: #444;
-      padding: 5px 10px;
-      border-radius: 4px;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .selected-user span {
-      cursor: pointer;
-      font-weight: bold;
-    }
-    .admin-note {
-      display: none;
-      background: #2a2a2a;
-      border: 1px solid #555;
-      padding: 12px;
-      margin-bottom: 20px;
-      border-radius: 4px;
-    }
+    textarea, input { width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 20px; background-color: #2a2a2a; color: white; border: 1px solid #444; font-family: inherit; font-size: 1rem; }
+    button { padding: 10px 20px; background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
+    .selected-users { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
+    .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
+    .selected-user span { cursor: pointer; font-weight: bold; }
+    #adminNoteBox { display: none; background-color: #333; padding: 15px; margin-bottom: 20px; border: 1px solid #555; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -66,11 +24,7 @@
   <h1>Feind Server Messages</h1>
   <p>API Status: 🟢</p>
 
-  <!-- ADMIN NOTE (ONLY SHOWS WHEN CLOSED) -->
-  <div id="adminNote" class="admin-note">
-    <strong>Messages Disabled</strong>
-    <p id="adminNoteText"></p>
-  </div>
+  <div id="adminNoteBox"><strong>Note from Admin:</strong> <span id="adminNoteText"></span></div>
 
   <form id="noteForm">
     <label>
@@ -113,9 +67,8 @@
   const selectedUsersContainer = document.getElementById('selectedUsersContainer');
   const form = document.getElementById('noteForm');
   const sendBtn = document.getElementById('sendBtn');
-
-  const adminNoteBox = document.getElementById("adminNote");
-  const adminNoteText = document.getElementById("adminNoteText");
+  const adminNoteBox = document.getElementById('adminNoteBox');
+  const adminNoteText = document.getElementById('adminNoteText');
 
   let selectedUsers = [];
   let isSending = false;
@@ -139,40 +92,17 @@
     "Vookey": "939296693562781877"
   };
 
+  // Populate datalist
   Object.keys(userMap).sort().forEach(u => {
     const opt = document.createElement('option');
     opt.value = u;
     datalist.appendChild(opt);
   });
 
-  // LIVE CONTROL + NOTE DISPLAY
-  db.ref("control").on("value", snap => {
-    const data = snap.val() || {};
-    const allow = data.allowMessages !== false;
-    const noteText = (data.note || "").trim();
-
-    sendBtn.disabled = !allow;
-
-    if (!allow) {
-      adminNoteBox.style.display = "block";
-      adminNoteText.textContent =
-        noteText || "Messages are currently disabled by an administrator.";
-    } else {
-      adminNoteBox.style.display = "none";
-    }
-  });
-
   pingInput.addEventListener('change', () => {
     const username = pingInput.value.trim();
-    if (!userMap[username]) {
-      pingInput.value = "";
-      return;
-    }
-    if (selectedUsers.length >= 5) {
-      alert("You can ping a maximum of 5 users.");
-      pingInput.value = "";
-      return;
-    }
+    if (!userMap[username]) { pingInput.value = ""; return; }
+    if (selectedUsers.length >= 5) { alert("You can ping a maximum of 5 users."); pingInput.value = ""; return; }
     selectedUsers.push(username);
     renderSelectedUsers();
     pingInput.value = "";
@@ -184,22 +114,33 @@
       const div = document.createElement('div');
       div.className = 'selected-user';
       div.textContent = user;
-
       const span = document.createElement('span');
       span.textContent = '✕';
-      span.onclick = () => {
-        selectedUsers.splice(i, 1);
-        renderSelectedUsers();
-      };
-
+      span.onclick = () => { selectedUsers.splice(i, 1); renderSelectedUsers(); };
       div.appendChild(span);
       selectedUsersContainer.appendChild(div);
     });
   }
 
-  note.addEventListener('input', function () {
+  note.addEventListener('input', function() {
     const lines = this.value.split('\n');
     if (lines.length > 15) this.value = lines.slice(0, 15).join('\n');
+  });
+
+  // LIVE CONTROL + ADMIN NOTE DISPLAY
+  db.ref("control").on("value", snap => {
+    const data = snap.val() || {};
+    const allow = data.allowMessages !== false;
+    const noteText = (data.note || "").trim(); // show admin note
+
+    sendBtn.disabled = !allow;
+
+    if (!allow) {
+      adminNoteBox.style.display = "block";
+      adminNoteText.textContent = noteText; // only show admin note
+    } else {
+      adminNoteBox.style.display = "none";
+    }
   });
 
   form.addEventListener('submit', async (e) => {
@@ -210,48 +151,36 @@
     try {
       const snapshot = await db.ref("control").get();
       const control = snapshot.val() || {};
-
-      if (control.allowMessages === false) {
-        alert("Sending is currently disabled.");
-        return;
-      }
-
+      const allowMessages = control.allowMessages !== false;
       const normalCooldown = control.cooldown || 0;
       const pingCooldown = control.pingCooldown || 0;
+
+      if (!allowMessages) { alert("Messages are currently disabled."); return; }
 
       const now = Date.now();
       const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
       const lastPingTime = parseInt(localStorage.getItem('lastPingTime')) || 0;
-
       const hasPing = selectedUsers.length > 0;
 
       if (hasPing && now - lastPingTime < pingCooldown) {
-        alert(`Please wait ${Math.ceil((pingCooldown - (now - lastPingTime)) / 1000)} seconds before sending another ping.`);
+        alert(`Please wait ${Math.ceil((pingCooldown - (now - lastPingTime))/1000)}s before sending another ping.`);
         return;
       }
-
       if (!hasPing && now - lastMessageTime < normalCooldown) {
-        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime)) / 1000)} seconds before sending another message.`);
+        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)}s before sending another message.`);
         return;
       }
 
       const pingText = selectedUsers.map(u => `<@${userMap[u]}>`).join(" ");
-      const messageContent =
-        (note.value.trim() ? note.value.trim() + (pingText ? " " : "") : "") + pingText;
-
-      if (!messageContent) {
-        alert("Please enter a message or select a user to ping.");
-        return;
-      }
+      const messageContent = (note.value.trim() ? note.value.trim() + (pingText ? " " : "") : "") + pingText;
+      if (!messageContent) { alert("Enter a message or select a user to ping."); return; }
 
       const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
-
       const res = await fetch(webhookURL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: messageContent })
       });
-
       if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
 
       alert("Message sent successfully!");
@@ -259,11 +188,12 @@
       selectedUsers = [];
       renderSelectedUsers();
 
-      localStorage.setItem(hasPing ? 'lastPingTime' : 'lastMessageTime', now);
+      if (hasPing) localStorage.setItem('lastPingTime', now);
+      else localStorage.setItem('lastMessageTime', now);
 
     } catch (err) {
       console.error(err);
-      alert("Failed to send message.");
+      alert("Failed to send message. Check console.");
     } finally {
       isSending = false;
     }
