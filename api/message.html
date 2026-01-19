@@ -10,11 +10,54 @@
     .main-content { padding: 40px; max-width: 800px; box-sizing: border-box; }
     h1 { font-size: 2rem; margin-bottom: 20px; }
     p { line-height: 1.6; margin-bottom: 20px; }
-    textarea, input { width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 20px; background-color: #2a2a2a; color: white; border: 1px solid #444; font-family: inherit; font-size: 1rem; }
-    button { padding: 10px 20px; background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
-    .selected-users { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
-    .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
-    .selected-user span { cursor: pointer; font-weight: bold; }
+    textarea, input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 6px;
+      margin-bottom: 20px;
+      background-color: #2a2a2a;
+      color: white;
+      border: 1px solid #444;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #444;
+      color: white;
+      border: 1px solid #666;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .selected-users {
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .selected-user {
+      background: #444;
+      padding: 5px 10px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .selected-user span {
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .admin-note {
+      display: none;
+      background: #2a2a2a;
+      border: 1px solid #555;
+      padding: 12px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
@@ -22,6 +65,12 @@
 <div class="main-content">
   <h1>Feind Server Messages</h1>
   <p>API Status: 🟢</p>
+
+  <!-- ADMIN NOTE (ONLY SHOWS WHEN CLOSED) -->
+  <div id="adminNote" class="admin-note">
+    <strong>Messages Disabled</strong>
+    <p id="adminNoteText"></p>
+  </div>
 
   <form id="noteForm">
     <label>
@@ -37,7 +86,7 @@
 
     <div class="selected-users" id="selectedUsersContainer"></div>
 
-    <button type="submit">Send</button>
+    <button type="submit" id="sendBtn">Send</button>
   </form>
 </div>
 
@@ -63,6 +112,10 @@
   const datalist = document.getElementById('userList');
   const selectedUsersContainer = document.getElementById('selectedUsersContainer');
   const form = document.getElementById('noteForm');
+  const sendBtn = document.getElementById('sendBtn');
+
+  const adminNoteBox = document.getElementById("adminNote");
+  const adminNoteText = document.getElementById("adminNoteText");
 
   let selectedUsers = [];
   let isSending = false;
@@ -92,20 +145,34 @@
     datalist.appendChild(opt);
   });
 
+  // LIVE CONTROL + NOTE DISPLAY
+  db.ref("control").on("value", snap => {
+    const data = snap.val() || {};
+    const allow = data.allowMessages !== false;
+    const noteText = (data.note || "").trim();
+
+    sendBtn.disabled = !allow;
+
+    if (!allow) {
+      adminNoteBox.style.display = "block";
+      adminNoteText.textContent =
+        noteText || "Messages are currently disabled by an administrator.";
+    } else {
+      adminNoteBox.style.display = "none";
+    }
+  });
+
   pingInput.addEventListener('change', () => {
     const username = pingInput.value.trim();
-
     if (!userMap[username]) {
       pingInput.value = "";
       return;
     }
-
     if (selectedUsers.length >= 5) {
       alert("You can ping a maximum of 5 users.");
       pingInput.value = "";
       return;
     }
-
     selectedUsers.push(username);
     renderSelectedUsers();
     pingInput.value = "";
@@ -144,14 +211,13 @@
       const snapshot = await db.ref("control").get();
       const control = snapshot.val() || {};
 
-      const allowMessages = control.allowMessages !== false;
-      const normalCooldown = control.cooldown || 0;
-      const pingCooldown = control.pingCooldown || 0;
-
-      if (!allowMessages) {
+      if (control.allowMessages === false) {
         alert("Sending is currently disabled.");
         return;
       }
+
+      const normalCooldown = control.cooldown || 0;
+      const pingCooldown = control.pingCooldown || 0;
 
       const now = Date.now();
       const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
@@ -193,15 +259,11 @@
       selectedUsers = [];
       renderSelectedUsers();
 
-      if (hasPing) {
-        localStorage.setItem('lastPingTime', now);
-      } else {
-        localStorage.setItem('lastMessageTime', now);
-      }
+      localStorage.setItem(hasPing ? 'lastPingTime' : 'lastMessageTime', now);
 
     } catch (err) {
       console.error(err);
-      alert("Failed to send message. Message may be too long or break a rule.");
+      alert("Failed to send message.");
     } finally {
       isSending = false;
     }
