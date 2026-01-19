@@ -134,16 +134,23 @@
       const snapshot = await db.ref("control").get();
       const control = snapshot.val() || {};
       const allowMessages = control.allowMessages !== false;
-      const cooldown = control.cooldown || 0;
+      const normalCooldown = control.cooldown || 0;
+      const pingCooldown = control.pingCooldown || 0;
 
       if (!allowMessages) { alert("Sending is currently disabled."); return; }
 
       const now = Date.now();
-      const lastUsed = parseInt(localStorage.getItem('lastUsed')) || 0;
+      const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
+      const lastPingTime = parseInt(localStorage.getItem('lastPingTime')) || 0;
 
-      if (now - lastUsed < cooldown) {
-        const waitSeconds = Math.ceil((cooldown - (now - lastUsed)) / 1000);
-        alert(`Please wait ${waitSeconds} second(s) before sending another message.`);
+      const hasPing = selectedUsers.length > 0;
+
+      // Check cooldowns
+      if (hasPing && now - lastPingTime < pingCooldown) {
+        alert(`Please wait ${Math.ceil((pingCooldown - (now - lastPingTime))/1000)} second(s) before sending another ping.`);
+        return;
+      } else if (!hasPing && now - lastMessageTime < normalCooldown) {
+        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)} second(s) before sending another message.`);
         return;
       }
 
@@ -167,8 +174,12 @@
       selectedUsers = [];
       renderSelectedUsers();
 
-      // Save last used timestamp for global cooldown
-      localStorage.setItem('lastUsed', now);
+      // Update timestamps
+      if (hasPing) {
+        localStorage.setItem('lastPingTime', now);
+      } else {
+        localStorage.setItem('lastMessageTime', now);
+      }
 
     } catch (err) {
       console.error(err);
