@@ -27,8 +27,19 @@
     .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
     .selected-user span { cursor: pointer; font-weight: bold; }
     #adminNoteBox { background: #333; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
-    #sendGifBtn { display: flex; justify-content: center; margin-bottom: 10px; padding: 0; border: none; background: none; cursor: pointer; }
-    #sendGifBtn img { width: 100px; height: auto; border-radius: 6px; }
+    /* Glungus GIF button style */
+    #sendGifBtn {
+      width: 80px;
+      height: 80px;
+      background-image: url('glungus.png');
+      background-size: cover;
+      background-position: center;
+      border: none;
+      cursor: pointer;
+      border-radius: 6px;
+      margin-bottom: 10px;
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -58,9 +69,7 @@
     <div class="selected-users" id="selectedUsersContainer"></div>
 
     <!-- GIF Button -->
-    <button type="button" id="sendGifBtn">
-      <img src="https://media.tenor.com/KQK_NfQDQg8AAAPo/glungus-cat.gif" alt="Send GIF">
-    </button>
+    <button type="button" id="sendGifBtn" title="Send Glungus GIF"></button>
 
     <button type="submit">Send</button>
   </form>
@@ -94,8 +103,7 @@
 
   let selectedUsers = [];
   let isSending = false;
-  let maxPings = 5; // default, will be overridden by Firebase
-  const gifURL = "https://media.tenor.com/KQK_NfQDQg8AAAPo/glungus-cat.gif";
+  let maxPings = 5; // default, updated from Firebase
 
   const userMap = {
     "EpicSparkZ": "941482778116120616",
@@ -116,7 +124,6 @@
     "Vookey": "939296693562781877"
   };
 
-  // populate datalist
   Object.keys(userMap).sort().forEach(u => {
     const opt = document.createElement('option');
     opt.value = u;
@@ -126,10 +133,10 @@
   pingInput.addEventListener('change', () => {
     const username = pingInput.value.trim();
     if (!userMap[username]) { pingInput.value = ""; return; }
-    if (selectedUsers.length >= maxPings) {
-      alert(`You can ping a maximum of ${maxPings} users.`);
-      pingInput.value = "";
-      return;
+    if (selectedUsers.length >= maxPings) { 
+      alert(`You can ping a maximum of ${maxPings} users.`); 
+      pingInput.value = ""; 
+      return; 
     }
     selectedUsers.push(username);
     renderSelectedUsers();
@@ -160,7 +167,7 @@
     const data = snap.val() || {};
     const allow = data.allowMessages !== false;
     const noteText = (data.note || "").trim() || "N/A";
-    maxPings = data.maxPings || 5; // pick up maxPings dynamically
+    maxPings = data.maxPings || 5;
 
     form.querySelector('button[type="submit"]').disabled = !allow;
 
@@ -172,48 +179,6 @@
     }
   });
 
-  // GIF button click
-  sendGifBtn.addEventListener('click', async () => {
-    if (isSending) return;
-    isSending = true;
-
-    try {
-      const snapshot = await db.ref("control").get();
-      const control = snapshot.val() || {};
-      const allowMessages = control.allowMessages !== false;
-      const normalCooldown = control.cooldown || 0;
-
-      if (!allowMessages) {
-        alert("Sending is currently disabled.");
-        return;
-      }
-
-      const now = Date.now();
-      const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
-
-      if (now - lastMessageTime < normalCooldown) {
-        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)} seconds before sending another message.`);
-        return;
-      }
-
-      const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
-      const res = await fetch(webhookURL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: gifURL })
-      });
-
-      if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
-      alert("GIF sent successfully!");
-      localStorage.setItem('lastMessageTime', now);
-
-    } catch (err) {
-      console.error(err);
-      alert("Failed to send GIF.");
-    } finally { isSending = false; }
-  });
-
-  // Form submission (normal messages)
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (isSending) return;
@@ -269,6 +234,47 @@
     } catch (err) {
       console.error(err);
       alert("Failed to send message. Message may be too long or break a rule.");
+    } finally { isSending = false; }
+  });
+
+  // GIF Button logic
+  sendGifBtn.addEventListener('click', async () => {
+    if (isSending) return;
+    isSending = true;
+
+    try {
+      const snapshot = await db.ref("control").get();
+      const control = snapshot.val() || {};
+      const allowMessages = control.allowMessages !== false;
+      const normalCooldown = control.cooldown || 0;
+
+      if (!allowMessages) { alert("Sending is currently disabled."); return; }
+
+      const now = Date.now();
+      const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
+
+      if (now - lastMessageTime < normalCooldown) {
+        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)} seconds before sending another message.`);
+        return;
+      }
+
+      const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
+      const gifURL = "https://media.tenor.com/KQK_NfQDQg8AAAPo/glungus-cat.mp4";
+
+      const res = await fetch(webhookURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: gifURL })
+      });
+
+      if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
+
+      alert("GIF sent successfully!");
+      localStorage.setItem('lastMessageTime', now);
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send GIF.");
     } finally { isSending = false; }
   });
 </script>
