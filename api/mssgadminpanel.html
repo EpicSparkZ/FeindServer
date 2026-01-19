@@ -34,24 +34,57 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  function saveSettings() {
+  let previousSettings = {};
+
+  // Load current settings from Firebase
+  db.ref('control').on('value', snapshot => {
+    const data = snapshot.val() || {};
+    previousSettings = {
+      allowMessages: data.allowMessages !== false,
+      cooldown: Math.floor((data.cooldown || 0) / 1000)
+    };
+    document.getElementById('allowSwitch').checked = previousSettings.allowMessages;
+    document.getElementById('cooldownInput').value = previousSettings.cooldown;
+  });
+
+  async function saveSettings() {
     const allow = document.getElementById('allowSwitch').checked;
     const cooldown = parseInt(document.getElementById('cooldownInput').value) || 0;
-    // Save to Firebase in the structure your message page expects
+
+    const changes = [];
+    if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending → **${allow}**`);
+    if (cooldown !== previousSettings.cooldown) changes.push(`Cooldown → **${cooldown} seconds**`);
+
+    if (changes.length > 0) {
+      // Send embed to Discord
+      const webhookURL = "https://discord.com/api/webhooks/1462555186886086828/MB0byZPUgcryGywo6vTB25CfnSwiIO58FrbI4ENgAB1aLa6mhsYzyDapr4zX48USZlbs";
+      const embed = {
+        title: "Settings Updated",
+        description: changes.join("\n"),
+        color: 0x00ff00, // green color
+        timestamp: new Date()
+      };
+
+      try {
+        const res = await fetch(webhookURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ embeds: [embed] })
+        });
+        if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
+      } catch(err) {
+        console.error("Failed to send Discord message:", err);
+      }
+    }
+
+    // Save to Firebase
     db.ref('control').set({
       allowMessages: allow,
       cooldown: cooldown * 1000 // convert to milliseconds
     });
+
     alert('Settings saved!');
   }
-
-  // Load current settings from Firebase
-  db.ref('control').on('value', snapshot => {
-    const data = snapshot.val();
-    if (!data) return;
-    document.getElementById('allowSwitch').checked = data.allowMessages !== false; // default true
-    document.getElementById('cooldownInput').value = Math.floor((data.cooldown || 0) / 1000);
-  });
 </script>
 </body>
 </html>
