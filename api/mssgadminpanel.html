@@ -12,12 +12,12 @@
       color: white;
       padding: 40px;
       display: flex;
-      justify-content: center; /* center content horizontally */
+      justify-content: center;
     }
 
     .container {
       width: 100%;
-      max-width: 500px; /* limits width so it doesn't stretch too much */
+      max-width: 500px;
     }
 
     label {
@@ -59,7 +59,13 @@
     </label>
 
     <label>
-      Cooldown (seconds): <input type="number" id="cooldownInput" value="0" min="0">
+      Normal Cooldown (seconds):
+      <input type="number" id="cooldownInput" value="0" min="0">
+    </label>
+
+    <label>
+      Ping Cooldown (seconds):
+      <input type="number" id="pingCooldownInput" value="0" min="0">
     </label>
 
     <label>
@@ -89,6 +95,7 @@
 
     const allowSwitch = document.getElementById('allowSwitch');
     const cooldownInput = document.getElementById('cooldownInput');
+    const pingCooldownInput = document.getElementById('pingCooldownInput');
     const noteInput = document.getElementById('noteInput');
     const saveBtn = document.getElementById('saveBtn');
 
@@ -100,10 +107,12 @@
       const data = snapshot.val() || {};
       previousSettings = {
         allowMessages: data.allowMessages !== false,
-        cooldown: Math.floor((data.cooldown || 0) / 1000)
+        cooldown: Math.floor((data.cooldown || 0) / 1000),
+        pingCooldown: Math.floor((data.pingCooldown || (data.cooldown || 0)) / 1000)
       };
       allowSwitch.checked = previousSettings.allowMessages;
       cooldownInput.value = previousSettings.cooldown;
+      pingCooldownInput.value = previousSettings.pingCooldown;
     });
 
     saveBtn.addEventListener('click', async () => {
@@ -112,22 +121,21 @@
 
       const allow = allowSwitch.checked;
       const cooldown = parseInt(cooldownInput.value) || 0;
+      const pingCooldown = parseInt(pingCooldownInput.value) || cooldown;
       const note = noteInput.value.trim();
 
       // Check for changes and include old values
       const changes = [];
-      if (allow !== previousSettings.allowMessages) {
-        changes.push(`Allow Sending: ${previousSettings.allowMessages} → ${allow}`);
-      }
-      if (cooldown !== previousSettings.cooldown) {
-        changes.push(`Cooldown: ${previousSettings.cooldown} seconds → ${cooldown} seconds`);
-      }
+      if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending: ${previousSettings.allowMessages} → ${allow}`);
+      if (cooldown !== previousSettings.cooldown) changes.push(`Normal Cooldown: ${previousSettings.cooldown}s → ${cooldown}s`);
+      if (pingCooldown !== previousSettings.pingCooldown) changes.push(`Ping Cooldown: ${previousSettings.pingCooldown}s → ${pingCooldown}s`);
 
       try {
         // Save to Firebase
         await db.ref('control').set({
           allowMessages: allow,
-          cooldown: cooldown * 1000
+          cooldown: cooldown * 1000,
+          pingCooldown: pingCooldown * 1000
         });
 
         // Send Discord message if there are changes or a note
