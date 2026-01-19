@@ -29,7 +29,6 @@
 <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
 
 <script>
-  // --- FIREBASE CONFIG ---
   const firebaseConfig = {
     apiKey: "AIzaSyA2HyO5wSmAZPBjfFrShcS2EF1G9uFT9nk",
     authDomain: "feindserver-ee38e.firebaseapp.com",
@@ -47,8 +46,9 @@
   const saveBtn = document.getElementById('saveBtn');
 
   let previousSettings = {};
+  let isSaving = false;
 
-  // Load current settings
+  // Load current settings from Firebase
   db.ref('control').on('value', snapshot => {
     const data = snapshot.val() || {};
     previousSettings = {
@@ -60,39 +60,46 @@
   });
 
   saveBtn.addEventListener('click', async () => {
+    if (isSaving) return;
+    isSaving = true;
+
     const allow = allowSwitch.checked;
     const cooldown = parseInt(cooldownInput.value) || 0;
 
-    // Compare previous settings to find changes
+    // Check for changes
     const changes = [];
     if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending → ${allow}`);
     if (cooldown !== previousSettings.cooldown) changes.push(`Cooldown → ${cooldown} seconds`);
 
-    // Send Discord message if there are changes
-    if (changes.length > 0) {
-      const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
-      const message = "Settings Updated:\n" + changes.join("\n");
+    try {
+      // Save to Firebase first
+      await db.ref('control').set({
+        allowMessages: allow,
+        cooldown: cooldown * 1000
+      });
 
-      try {
+      // Only send Discord message if there are changes
+      if (changes.length > 0) {
+        const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
+        const message = "Settings Updated:\n" + changes.join("\n");
+
         const res = await fetch(webhookURL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content: message })
         });
+
         if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
         console.log("Discord message sent successfully!");
-      } catch (err) {
-        console.error("Failed to send Discord message:", err);
       }
+
+      alert('Settings saved!');
+    } catch (err) {
+      console.error("Failed to save or send message:", err);
+      alert("Error saving settings or sending Discord message. Check console.");
+    } finally {
+      isSaving = false;
     }
-
-    // Save to Firebase
-    db.ref('control').set({
-      allowMessages: allow,
-      cooldown: cooldown * 1000
-    });
-
-    alert('Settings saved!');
   });
 </script>
 </body>
