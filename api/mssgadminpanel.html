@@ -176,5 +176,30 @@
       }
     });
   </script>
+
+  <script>
+  // Function to lock the page until correct code is entered
+  function requireAccessCode() {
+    const correctCode = "7841";
+
+    let enteredCode = prompt("Enter access code to use this page:");
+
+    if (enteredCode !== correctCode) {
+      alert("Incorrect code! You cannot use this page.");
+      
+      // Disable all inputs and the save button
+      document.querySelectorAll('input, button, textarea').forEach(el => {
+        el.disabled = true;
+      });
+
+      // Optionally, you can also hide the container
+      // document.querySelector('.container').style.display = 'none';
+    }
+  }
+
+  // Call the function on page load
+  requireAccessCode();
+</script>
+
 </body>
 </html>
