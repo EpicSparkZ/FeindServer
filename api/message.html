@@ -86,6 +86,7 @@
 
   let selectedUsers = [];
   let isSending = false;
+  let maxPings = 5; // default, will be overridden by Firebase
 
   const userMap = {
     "EpicSparkZ": "941482778116120616",
@@ -106,6 +107,7 @@
     "Vookey": "939296693562781877"
   };
 
+  // populate datalist
   Object.keys(userMap).sort().forEach(u => {
     const opt = document.createElement('option');
     opt.value = u;
@@ -115,7 +117,11 @@
   pingInput.addEventListener('change', () => {
     const username = pingInput.value.trim();
     if (!userMap[username]) { pingInput.value = ""; return; }
-    if (selectedUsers.length >= 5) { alert("You can ping a maximum of 5 users."); pingInput.value = ""; return; }
+    if (selectedUsers.length >= maxPings) {
+      alert(`You can ping a maximum of ${maxPings} users.`);
+      pingInput.value = "";
+      return;
+    }
 
     selectedUsers.push(username);
     renderSelectedUsers();
@@ -146,6 +152,7 @@
     const data = snap.val() || {};
     const allow = data.allowMessages !== false;
     const noteText = (data.note || "").trim() || "N/A";
+    maxPings = data.maxPings || 5; // pick up maxPings dynamically
 
     form.querySelector('button').disabled = !allow;
 
@@ -168,6 +175,7 @@
       const allowMessages = control.allowMessages !== false;
       const normalCooldown = control.cooldown || 0;
       const pingCooldown = control.pingCooldown || 0;
+      maxPings = control.maxPings || 5;
 
       if (!allowMessages) { alert("Sending is currently disabled."); return; }
 
