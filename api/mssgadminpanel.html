@@ -66,10 +66,14 @@
     const allow = allowSwitch.checked;
     const cooldown = parseInt(cooldownInput.value) || 0;
 
-    // Check for changes
+    // Check for changes and include old values
     const changes = [];
-    if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending → ${allow}`);
-    if (cooldown !== previousSettings.cooldown) changes.push(`Cooldown → ${cooldown} seconds`);
+    if (allow !== previousSettings.allowMessages) {
+      changes.push(`Allow Sending: ${previousSettings.allowMessages} → ${allow}`);
+    }
+    if (cooldown !== previousSettings.cooldown) {
+      changes.push(`Cooldown: ${previousSettings.cooldown} seconds → ${cooldown} seconds`);
+    }
 
     try {
       // Save to Firebase first
@@ -78,7 +82,7 @@
         cooldown: cooldown * 1000
       });
 
-      // Only send Discord message if there are changes
+      // Send Discord message if there are changes
       if (changes.length > 0) {
         const webhookURL = "https://discord.com/api/webhooks/1462611630683853002/bq3KbE-StqlChYFWhDgoSee9FJYp7taH64GzjCpjmwgz9zDvhNnzdn51kyd6LrySnKal";
         const message = "Settings Updated:\n" + changes.join("\n");
