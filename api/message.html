@@ -179,7 +179,7 @@
       const pingCooldown = control.pingCooldown || 0;
       maxPings = control.maxPings || 5;
 
-      if (!allowMessages) { alert("Sending is currently disabled."); return; }
+      if (!allowMessages) { alert("Sending messages is currently disabled."); return; }
 
       const now = Date.now();
       const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
