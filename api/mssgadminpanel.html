@@ -1,7 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Control Page</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background-color: #1e1e1e; color: white; padding: 40px; }
+    label { display: block; margin-bottom: 15px; }
+    input, button { padding: 8px; font-size: 1rem; margin-top: 5px; }
+    button { background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
+  </style>
 </head>
 <body>
 <h2>Control Discord Messages</h2>
@@ -9,12 +17,12 @@
 <label>
   <input type="checkbox" id="allowSwitch"> Allow Sending
 </label>
-<br>
+
 <label>
   Cooldown (seconds): <input type="number" id="cooldownInput" value="0" min="0">
 </label>
-<br>
-<button onclick="saveSettings()">Save</button>
+
+<button id="saveBtn">Save</button>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
@@ -34,27 +42,33 @@
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
+  const allowSwitch = document.getElementById('allowSwitch');
+  const cooldownInput = document.getElementById('cooldownInput');
+  const saveBtn = document.getElementById('saveBtn');
+
   let previousSettings = {};
 
-  // Load current settings from Firebase
+  // Load current settings
   db.ref('control').on('value', snapshot => {
     const data = snapshot.val() || {};
     previousSettings = {
       allowMessages: data.allowMessages !== false,
       cooldown: Math.floor((data.cooldown || 0) / 1000)
     };
-    document.getElementById('allowSwitch').checked = previousSettings.allowMessages;
-    document.getElementById('cooldownInput').value = previousSettings.cooldown;
+    allowSwitch.checked = previousSettings.allowMessages;
+    cooldownInput.value = previousSettings.cooldown;
   });
 
-  async function saveSettings() {
-    const allow = document.getElementById('allowSwitch').checked;
-    const cooldown = parseInt(document.getElementById('cooldownInput').value) || 0;
+  saveBtn.addEventListener('click', async () => {
+    const allow = allowSwitch.checked;
+    const cooldown = parseInt(cooldownInput.value) || 0;
 
+    // Compare previous settings to find changes
     const changes = [];
     if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending → ${allow}`);
     if (cooldown !== previousSettings.cooldown) changes.push(`Cooldown → ${cooldown} seconds`);
 
+    // Send Discord message if there are changes
     if (changes.length > 0) {
       const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
       const message = "Settings Updated:\n" + changes.join("\n");
@@ -67,7 +81,7 @@
         });
         if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
         console.log("Discord message sent successfully!");
-      } catch(err) {
+      } catch (err) {
         console.error("Failed to send Discord message:", err);
       }
     }
@@ -79,7 +93,7 @@
     });
 
     alert('Settings saved!');
-  }
+  });
 </script>
 </body>
 </html>
