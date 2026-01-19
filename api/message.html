@@ -20,7 +20,7 @@
       border: 1px solid #444; 
       font-family: inherit; 
       font-size: 1rem; 
-      resize: none; /* Prevent user from resizing the textarea */
+      resize: none;
     }
     button { padding: 10px 20px; background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
     .selected-users { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
@@ -35,7 +35,6 @@
   <h1>Feind Server Messages</h1>
   <p>API Status: 🟢</p>
 
-  <!-- Admin Note Box -->
   <div id="adminNoteBox" style="display:none;">
     <p><strong>Messages are currently disabled by an administrator.</strong></p>
     <p><strong>Provided Note:</strong> <span id="adminNoteText"></span></p>
@@ -59,7 +58,6 @@
   </form>
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
 
@@ -86,7 +84,7 @@
 
   let selectedUsers = [];
   let isSending = false;
-  let maxPings = 5; // default, can be overridden by Firebase
+  let maxPings = 5;
 
   const userMap = {
     "EpicSparkZ": "941482778116120616",
@@ -107,7 +105,6 @@
     "Vookey": "939296693562781877"
   };
 
-  // populate datalist
   Object.keys(userMap).sort().forEach(u => {
     const opt = document.createElement('option');
     opt.value = u;
@@ -117,11 +114,7 @@
   pingInput.addEventListener('change', () => {
     const username = pingInput.value.trim();
     if (!userMap[username]) { pingInput.value = ""; return; }
-    if (selectedUsers.length >= maxPings) {
-      alert(`You can ping a maximum of ${maxPings} users.`);
-      pingInput.value = "";
-      return;
-    }
+    if (selectedUsers.length >= maxPings) { alert(`You can ping a maximum of ${maxPings} users.`); pingInput.value = ""; return; }
     selectedUsers.push(username);
     renderSelectedUsers();
     pingInput.value = "";
@@ -146,7 +139,7 @@
     if (lines.length > 15) this.value = lines.slice(0,15).join('\n');
   });
 
-  // Listen for admin control changes
+  // FIX APPLIED HERE
   db.ref("control").on("value", snap => {
     const data = snap.val() || {};
     const allow = data.allowMessages !== false;
@@ -158,12 +151,10 @@
     if (!allow) {
       adminNoteBox.style.display = "block";
       adminNoteText.textContent = noteText;
+      note.value = data.note || "";
     } else {
       adminNoteBox.style.display = "none";
     }
-
-    // ADDED: Populate the note textarea with the admin note
-    note.value = data.note || "";
   });
 
   form.addEventListener('submit', async (e) => {
@@ -186,20 +177,13 @@
       const lastPingTime = parseInt(localStorage.getItem('lastPingTime')) || 0;
       const hasPing = selectedUsers.length > 0;
 
-      if (hasPing && now - lastPingTime < pingCooldown) {
-        alert(`Please wait ${Math.ceil((pingCooldown - (now - lastPingTime))/1000)} seconds before sending another ping.`);
-        return;
-      }
-
-      if (!hasPing && now - lastMessageTime < normalCooldown) {
-        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)} seconds before sending another message.`);
-        return;
-      }
+      if (hasPing && now - lastPingTime < pingCooldown) return;
+      if (!hasPing && now - lastMessageTime < normalCooldown) return;
 
       const pingText = selectedUsers.map(u => `<@${userMap[u]}>`).join(" ");
       const messageContent = (note.value.trim() ? note.value.trim() + (pingText ? " " : "") : "") + pingText;
 
-      if (!messageContent) { alert("Please enter a message or select a user to ping."); return; }
+      if (!messageContent) return;
 
       const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
       const res = await fetch(webhookURL, {
@@ -208,7 +192,7 @@
         body: JSON.stringify({ content: messageContent })
       });
 
-      if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
+      if (!res.ok) throw new Error();
 
       alert("Message sent successfully!");
       form.reset();
@@ -218,8 +202,7 @@
       if (hasPing) localStorage.setItem('lastPingTime', now);
       else localStorage.setItem('lastMessageTime', now);
 
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert("Failed to send message. Message may be too long or break a rule.");
     } finally { isSending = false; }
   });
