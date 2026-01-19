@@ -69,6 +69,11 @@
     </label>
 
     <label>
+      Max Pings Per Message:
+      <input type="number" id="maxPingsInput" value="5" min="1">
+    </label>
+
+    <label>
       Optional Note:
       <textarea id="noteInput" placeholder="Add a note to include in the Discord message..."></textarea>
     </label>
@@ -96,6 +101,7 @@
     const allowSwitch = document.getElementById('allowSwitch');
     const cooldownInput = document.getElementById('cooldownInput');
     const pingCooldownInput = document.getElementById('pingCooldownInput');
+    const maxPingsInput = document.getElementById('maxPingsInput'); // NEW
     const noteInput = document.getElementById('noteInput');
     const saveBtn = document.getElementById('saveBtn');
 
@@ -108,11 +114,13 @@
       previousSettings = {
         allowMessages: data.allowMessages !== false,
         cooldown: Math.floor((data.cooldown || 0) / 1000),
-        pingCooldown: Math.floor((data.pingCooldown || (data.cooldown || 0)) / 1000)
+        pingCooldown: Math.floor((data.pingCooldown || (data.cooldown || 0)) / 1000),
+        maxPings: data.maxPings || 5 // NEW
       };
       allowSwitch.checked = previousSettings.allowMessages;
       cooldownInput.value = previousSettings.cooldown;
       pingCooldownInput.value = previousSettings.pingCooldown;
+      maxPingsInput.value = previousSettings.maxPings;
     });
 
     saveBtn.addEventListener('click', async () => {
@@ -122,6 +130,7 @@
       const allow = allowSwitch.checked;
       const cooldown = parseInt(cooldownInput.value) || 0;
       const pingCooldown = parseInt(pingCooldownInput.value) || cooldown;
+      const maxPings = parseInt(maxPingsInput.value) || 5; // NEW
       const note = noteInput.value.trim();
 
       // Check for changes and include old values
@@ -129,13 +138,15 @@
       if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending: ${previousSettings.allowMessages} → ${allow}`);
       if (cooldown !== previousSettings.cooldown) changes.push(`Normal Cooldown: ${previousSettings.cooldown}s → ${cooldown}s`);
       if (pingCooldown !== previousSettings.pingCooldown) changes.push(`Ping Cooldown: ${previousSettings.pingCooldown}s → ${pingCooldown}s`);
+      if (maxPings !== previousSettings.maxPings) changes.push(`Max Pings: ${previousSettings.maxPings} → ${maxPings}`); // NEW
 
       try {
         // Save to Firebase
         await db.ref('control').set({
           allowMessages: allow,
           cooldown: cooldown * 1000,
-          pingCooldown: pingCooldown * 1000
+          pingCooldown: pingCooldown * 1000,
+          maxPings: maxPings // NEW
         });
 
         // Send Discord message if there are changes or a note
