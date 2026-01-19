@@ -56,13 +56,13 @@
     if (cooldown !== previousSettings.cooldown) changes.push(`Cooldown → **${cooldown} seconds**`);
 
     if (changes.length > 0) {
-      // Send embed to Discord
       const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
+
       const embed = {
         title: "Settings Updated",
         description: changes.join("\n"),
-        color: 0x00ff00, // green color
-        timestamp: new Date()
+        color: 0x00ff00, // green
+        timestamp: new Date().toISOString() // ISO string is required
       };
 
       try {
@@ -72,6 +72,7 @@
           body: JSON.stringify({ embeds: [embed] })
         });
         if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
+        console.log("Discord embed sent successfully!");
       } catch(err) {
         console.error("Failed to send Discord message:", err);
       }
@@ -80,7 +81,7 @@
     // Save to Firebase
     db.ref('control').set({
       allowMessages: allow,
-      cooldown: cooldown * 1000 // convert to milliseconds
+      cooldown: cooldown * 1000
     });
 
     alert('Settings saved!');
