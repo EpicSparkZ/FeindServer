@@ -66,7 +66,6 @@
   let selectedUsers = [];
   let isSending = false;
 
-  // Users to ping
   const userMap = {
     "EpicSparkZ": "941482778116120616",
     "Raptor": "830376717226475531",
@@ -86,7 +85,6 @@
     "Vookey": "939296693562781877"
   };
 
-  // Populate ping dropdown
   Object.keys(userMap).sort().forEach(u => {
     const option = document.createElement('option');
     option.value = u;
@@ -133,28 +131,19 @@
     pingUser.disabled = true;
 
     try {
-      // Get cooldown settings from admin panel
       const snapshot = await db.ref("control").get();
       const control = snapshot.val() || {};
       const allowMessages = control.allowMessages !== false;
       const cooldown = control.cooldown || 0;
-      const pingCooldown = control.pingCooldown || cooldown * 2; // fallback if not set
 
       if (!allowMessages) { alert("Sending is currently disabled."); return; }
 
       const now = Date.now();
-      const lastSent = parseInt(localStorage.getItem('lastSent')) || 0;
-      const lastPinged = parseInt(localStorage.getItem('lastPinged')) || 0;
+      const lastUsed = parseInt(localStorage.getItem('lastUsed')) || 0;
 
-      const hasPing = selectedUsers.length > 0;
-
-      // Determine cooldown to apply
-      const lastUsed = hasPing ? lastPinged : lastSent;
-      const usedCooldown = hasPing ? pingCooldown : cooldown;
-
-      if (now - lastUsed < usedCooldown) {
-        const waitSeconds = Math.ceil((usedCooldown - (now - lastUsed)) / 1000);
-        alert(`Please wait ${waitSeconds} second(s) before sending again.`);
+      if (now - lastUsed < cooldown) {
+        const waitSeconds = Math.ceil((cooldown - (now - lastUsed)) / 1000);
+        alert(`Please wait ${waitSeconds} second(s) before sending another message.`);
         return;
       }
 
@@ -178,9 +167,8 @@
       selectedUsers = [];
       renderSelectedUsers();
 
-      // Save last sent times
-      if (hasPing) localStorage.setItem('lastPinged', now);
-      else localStorage.setItem('lastSent', now);
+      // Save last used timestamp for global cooldown
+      localStorage.setItem('lastUsed', now);
 
     } catch (err) {
       console.error(err);
