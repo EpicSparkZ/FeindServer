@@ -27,6 +27,8 @@
     .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
     .selected-user span { cursor: pointer; font-weight: bold; }
     #adminNoteBox { background: #333; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+    #sendGifBtn { display: flex; justify-content: center; margin-bottom: 10px; padding: 0; border: none; background: none; cursor: pointer; }
+    #sendGifBtn img { width: 100px; height: auto; border-radius: 6px; }
   </style>
 </head>
 <body>
@@ -54,6 +56,11 @@
     </label>
 
     <div class="selected-users" id="selectedUsersContainer"></div>
+
+    <!-- GIF Button -->
+    <button type="button" id="sendGifBtn">
+      <img src="https://media.tenor.com/KQK_NfQDQg8AAAPo/glungus-cat.gif" alt="Send GIF">
+    </button>
 
     <button type="submit">Send</button>
   </form>
@@ -83,10 +90,12 @@
   const form = document.getElementById('noteForm');
   const adminNoteBox = document.getElementById('adminNoteBox');
   const adminNoteText = document.getElementById('adminNoteText');
+  const sendGifBtn = document.getElementById('sendGifBtn');
 
   let selectedUsers = [];
   let isSending = false;
   let maxPings = 5; // default, will be overridden by Firebase
+  const gifURL = "https://media.tenor.com/KQK_NfQDQg8AAAPo/glungus-cat.gif";
 
   const userMap = {
     "EpicSparkZ": "941482778116120616",
@@ -122,7 +131,6 @@
       pingInput.value = "";
       return;
     }
-
     selectedUsers.push(username);
     renderSelectedUsers();
     pingInput.value = "";
@@ -154,7 +162,7 @@
     const noteText = (data.note || "").trim() || "N/A";
     maxPings = data.maxPings || 5; // pick up maxPings dynamically
 
-    form.querySelector('button').disabled = !allow;
+    form.querySelector('button[type="submit"]').disabled = !allow;
 
     if (!allow) {
       adminNoteBox.style.display = "block";
@@ -164,6 +172,48 @@
     }
   });
 
+  // GIF button click
+  sendGifBtn.addEventListener('click', async () => {
+    if (isSending) return;
+    isSending = true;
+
+    try {
+      const snapshot = await db.ref("control").get();
+      const control = snapshot.val() || {};
+      const allowMessages = control.allowMessages !== false;
+      const normalCooldown = control.cooldown || 0;
+
+      if (!allowMessages) {
+        alert("Sending is currently disabled.");
+        return;
+      }
+
+      const now = Date.now();
+      const lastMessageTime = parseInt(localStorage.getItem('lastMessageTime')) || 0;
+
+      if (now - lastMessageTime < normalCooldown) {
+        alert(`Please wait ${Math.ceil((normalCooldown - (now - lastMessageTime))/1000)} seconds before sending another message.`);
+        return;
+      }
+
+      const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
+      const res = await fetch(webhookURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: gifURL })
+      });
+
+      if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
+      alert("GIF sent successfully!");
+      localStorage.setItem('lastMessageTime', now);
+
+    } catch (err) {
+      console.error(err);
+      alert("Failed to send GIF.");
+    } finally { isSending = false; }
+  });
+
+  // Form submission (normal messages)
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (isSending) return;
