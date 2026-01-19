@@ -3,185 +3,158 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Feind Server</title>
-  <link rel="icon" href="/webicon.png" type="image/png">
+  <title>Control Page</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background-color: #1e1e1e; color: white; overflow-x: hidden; }
-
-    .main-content { padding: 40px; max-width: 800px; box-sizing: border-box; }
-    h1 { font-size: 2rem; margin-bottom: 20px; }
-    p { line-height: 1.6; margin-bottom: 20px; }
-    textarea, select { width: 100%; padding: 8px; margin-top: 6px; margin-bottom: 20px; background-color: #2a2a2a; color: white; border: 1px solid #444; font-family: inherit; font-size: 1rem; }
-    button { padding: 10px 20px; background-color: #444; color: white; border: 1px solid #666; cursor: pointer; }
-    .selected-users { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 5px; }
-    .selected-user { background: #444; padding: 5px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 5px; }
-    .selected-user span { cursor: pointer; font-weight: bold; }
+    body { 
+      margin: 0; 
+      font-family: Arial, sans-serif; 
+      background-color: #1e1e1e; 
+      color: white; 
+      padding: 40px; 
+      display: flex; 
+      justify-content: center; 
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+    }
+    label { display: block; margin-bottom: 15px; }
+    input, button, textarea { 
+      padding: 8px; 
+      font-size: 1rem; 
+      margin-top: 5px; 
+      width: 100%; 
+      box-sizing: border-box; 
+    }
+    button { 
+      background-color: #444; 
+      color: white; 
+      border: 1px solid #666; 
+      cursor: pointer; 
+      width: auto; 
+    }
+    textarea { 
+      height: 80px; 
+      background-color: #2a2a2a; 
+      color: white; 
+      border: 1px solid #444; 
+      font-family: inherit; 
+    }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h2>Control Discord Messages</h2>
 
-<div class="main-content">
-  <h1>Feind Server API</h1>
-  <p>API Status: 🟢</p>
-
-  <form id="noteForm">
     <label>
-      <strong>Message</strong><br>
-      <textarea id="note" rows="5" placeholder="Type your message here..."></textarea>
+      <input type="checkbox" id="allowSwitch"> Allow Sending
     </label>
 
     <label>
-      <strong>Ping Users</strong><br>
-      <select id="pingUser">
-        <option value="">Select user...</option>
-      </select>
+      Normal Cooldown (seconds):
+      <input type="number" id="cooldownInput" value="0" min="0">
     </label>
 
-    <div class="selected-users" id="selectedUsersContainer"></div>
+    <label>
+      Ping Cooldown (seconds):
+      <input type="number" id="pingCooldownInput" value="0" min="0">
+    </label>
 
-    <button type="submit">Send</button>
-  </form>
-</div>
+    <label>
+      Optional Note:
+      <textarea id="noteInput" placeholder="Add a note to include in the Discord message..."></textarea>
+    </label>
 
-<!-- Firebase App (core) -->
-<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
+    <button id="saveBtn">Save</button>
+  </div>
 
-<script>
-  // --- FIREBASE CONFIG ---
-  const firebaseConfig = {
-    apiKey: "AIzaSyA2HyO5wSmAZPBjfFrShcS2EF1G9uFT9nk",
-    authDomain: "feindserver-ee38e.firebaseapp.com",
-    databaseURL: "https://feindserver-ee38e-default-rtdb.firebaseio.com",
-    projectId: "feindserver-ee38e",
-    storageBucket: "feindserver-ee38e.appspot.com",
-    messagingSenderId: "612147980631",
-    appId: "1:612147980631:web:699fec3b5ffa01d0ebb612"
-  };
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.6.0/firebase-database-compat.js"></script>
 
-  const note = document.getElementById('note');
-  const pingUser = document.getElementById('pingUser');
-  const selectedUsersContainer = document.getElementById('selectedUsersContainer');
-  const form = document.getElementById('noteForm');
-  let selectedUsers = [];
-  let isSending = false; // LOCK FLAG
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2HyO5wSmAZPBjfFrShcS2EF1G9uFT9nk",
+      authDomain: "feindserver-ee38e.firebaseapp.com",
+      databaseURL: "https://feindserver-ee38e-default-rtdb.firebaseio.com",
+      projectId: "feindserver-ee38e",
+      storageBucket: "feindserver-ee38e.appspot.com",
+      messagingSenderId: "612147980631",
+      appId: "1:612147980631:web:699fec3b5ffa01d0ebb612"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-  // Users you can ping
-  const userMap = {
-    "EpicSparkZ": "941482778116120616",
-    "Raptor": "830376717226475531",
-    "Rutap": "781965040223780874",
-    "Tonk": "667179181565542404",
-    "zGray": "956638625116868662",
-    "EggsAreGreat": "1148606556980650106",
-    "Hogurts": "989062707917504512",
-    "dddashy": "905896395645517844",
-    "Flakey": "1462117336072065260",
-    "Veno": "1101554384145485866",
-    "Caketi": "1004042054944440371",
-    "Galaxifard": "1144068676295872653",
-    "FeindFighter": "1157795564457574410",
-    "Predd": "1131758881538846740",
-    "Orangss": "771937709551124510",
-    "Vookey": "939296693562781877"
-  };
+    const allowSwitch = document.getElementById('allowSwitch');
+    const cooldownInput = document.getElementById('cooldownInput');
+    const pingCooldownInput = document.getElementById('pingCooldownInput');
+    const noteInput = document.getElementById('noteInput');
+    const saveBtn = document.getElementById('saveBtn');
 
-  // Populate select options alphabetically
-  Object.keys(userMap).sort().forEach(username => {
-    const option = document.createElement('option');
-    option.value = username;
-    option.textContent = username;
-    pingUser.appendChild(option);
-  });
+    let previousSettings = {};
+    let isSaving = false;
 
-  pingUser.addEventListener('change', () => {
-    const username = pingUser.value;
-    if (username) {
-      selectedUsers.push(username); // allow duplicates
-      renderSelectedUsers();
-    }
-    pingUser.value = "";
-  });
-
-  function renderSelectedUsers() {
-    selectedUsersContainer.innerHTML = "";
-    selectedUsers.forEach((user, i) => {
-      const div = document.createElement('div');
-      div.className = 'selected-user';
-      div.textContent = user;
-      const span = document.createElement('span');
-      span.textContent = '✕';
-      span.onclick = () => { selectedUsers.splice(i, 1); renderSelectedUsers(); };
-      div.appendChild(span);
-      selectedUsersContainer.appendChild(div);
+    // Load current settings from Firebase
+    db.ref('control').on('value', snapshot => {
+      const data = snapshot.val() || {};
+      previousSettings = {
+        allowMessages: data.allowMessages !== false,
+        cooldown: Math.floor((data.cooldown || 0) / 1000),
+        pingCooldown: Math.floor((data.pingCooldown || (data.cooldown || 0)) / 1000)
+      };
+      allowSwitch.checked = previousSettings.allowMessages;
+      cooldownInput.value = previousSettings.cooldown;
+      pingCooldownInput.value = previousSettings.pingCooldown;
     });
-  }
 
-  note.addEventListener('input', function() {
-    const lines = this.value.split('\n');
-    if (lines.length > 15) this.value = lines.slice(0, 15).join('\n');
-  });
+    saveBtn.addEventListener('click', async () => {
+      if (isSaving) return;
+      isSaving = true;
 
-  form.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    if (isSending) return; // prevent multiple submits
-    isSending = true;
+      const allow = allowSwitch.checked;
+      const cooldown = parseInt(cooldownInput.value) || 0;
+      const pingCooldown = parseInt(pingCooldownInput.value) || cooldown;
+      const note = noteInput.value.trim();
 
-    const submitButton = form.querySelector('button');
-    submitButton.disabled = true;
-    note.disabled = true;
-    pingUser.disabled = true;
+      // Check for changes and include old values
+      const changes = [];
+      if (allow !== previousSettings.allowMessages) changes.push(`Allow Sending: ${previousSettings.allowMessages} → ${allow}`);
+      if (cooldown !== previousSettings.cooldown) changes.push(`Normal Cooldown: ${previousSettings.cooldown}s → ${cooldown}s`);
+      if (pingCooldown !== previousSettings.pingCooldown) changes.push(`Ping Cooldown: ${previousSettings.pingCooldown}s → ${pingCooldown}s`);
 
-    try {
-      const webhookURL = "https://discord.com/api/webhooks/1462604278462939351/77_Xwp8KgaZlus_T0PMbqmUIhgPG41G1w5YYzXZ8XR6cdAIiKvFT3zdyBtuEP-VNGnyx";
+      try {
+        // Save to Firebase
+        await db.ref('control').set({
+          allowMessages: allow,
+          cooldown: cooldown * 1000,
+          pingCooldown: pingCooldown * 1000
+        });
 
-      // --- FIREBASE CHECK ---
-      const snapshot = await db.ref("control").get();
-      const control = snapshot.val() || {};
-      const allowMessages = control.allowMessages !== false;
-      const cooldown = control.cooldown || 0;
+        // Send Discord message if there are changes or a note
+        if (changes.length > 0 || note) {
+          const webhookURL = "https://discord.com/api/webhooks/1462611630683853002/bq3KbE-StqlChYFWhDgoSee9FJYp7taH64GzjCpjmwgz9zDvhNnzdn51kyd6LrySnKal";
+          let message = "Settings Updated:\n" + changes.join("\n");
+          if (note) message += "\n\nNote: " + note;
 
-      const now = Date.now();
-      const lastSent = parseInt(localStorage.getItem('lastSent')) || 0;
+          const res = await fetch(webhookURL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: message })
+          });
 
-      if (!allowMessages) { alert("Sending is currently disabled."); return; }
-      if (now - lastSent < cooldown) { 
-        alert(`Please wait ${Math.ceil((cooldown - (now - lastSent))/1000)} seconds before sending again.`); 
-        return; 
+          if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
+          console.log("Discord message sent successfully!");
+        }
+
+        alert('Settings saved!');
+        noteInput.value = ""; // Clear note after sending
+      } catch (err) {
+        console.error("Failed to save or send message:", err);
+        alert("Error saving settings or sending Discord message. Check console.");
+      } finally {
+        isSaving = false;
       }
-
-      const pingText = selectedUsers.map(u => `<@${userMap[u]}>`).join(" ");
-      const messageContent = (note.value.trim() ? note.value.trim() + (pingText ? " " : "") : "") + pingText;
-
-      if (!messageContent) { alert("Please enter a message or select a user to ping."); return; }
-
-      const res = await fetch(webhookURL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: messageContent })
-      });
-
-      if (!res.ok) throw new Error(`Discord returned status ${res.status}`);
-
-      alert("Message Sent Successfully!");
-      form.reset();
-      selectedUsers = [];
-      renderSelectedUsers();
-      localStorage.setItem('lastSent', now);
-
-    } catch(err) {
-      console.error(err);
-      alert("Failed to send message. Check console for details.");
-    } finally {
-      isSending = false;
-      submitButton.disabled = false;
-      note.disabled = false;
-      pingUser.disabled = false;
-    }
-  });
-</script>
-
+    });
+  </script>
 </body>
 </html>
